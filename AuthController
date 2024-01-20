@@ -1,0 +1,171 @@
+using Admin.Models;
+using Admin.Models.Authentication;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Threading.Tasks;
+
+namespace Admin.Controllers
+{
+    public class TamrinAuthController : Controller
+    {
+        public readonly UserManager<User> userManager;
+        public readonly SignInManager<User> signInManager;
+        public IMapper mapper;
+        public readonly RoleManager<Role> roleManager;
+        
+
+        public TamrinAuthController(UserManager<User> userManager, IMapper mapper, RoleManager<Role> roleManager, SignInManager<User> signInManager)
+        {
+            this.userManager = userManager;
+            this.mapper = mapper;
+            this.roleManager = roleManager;
+            this.signInManager = signInManager;
+        }
+
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AssignAdmin(string UserName)
+        {
+            var user = await userManager.FindByNameAsync(UserName);
+            var role = await roleManager.FindByNameAsync("Admin");
+            if (role==null)
+            {
+                var Role = new Role()
+                {
+                    Name = "Admin",
+                    NormalizedName = "Admin",
+                    Description="Admin",
+                };
+                await roleManager.CreateAsync(Role);
+            }
+            await userManager.AddToRoleAsync(user, "Admin");
+            return RedirectToAction(nameof(TamrinLogin));
+        }
+        [Authorize(Roles="Admin")]
+        public async Task<IActionResult> AssignSecretary(string UserName)
+        {
+            var user = await userManager.FindByNameAsync(UserName);
+            var role = await roleManager.FindByNameAsync("Secretary");
+            if (role==null)
+            {
+                var Role = new Role()
+                {
+                    Name = "Secretary",
+                    NormalizedName = "Secretary",
+                    Description = "Secretary"
+                };
+                await roleManager.CreateAsync(Role);
+            }
+            await userManager.AddToRoleAsync(user, "Secretary");
+            return RedirectToAction("Dashboard", "Dashboard");
+        }
+        public async Task<IActionResult> Signup()
+        {
+            return View();
+        }
+        [HttpPost]
+        public async Task<IActionResult> Signup(SignUpDto Dto)
+        {
+            var CheckExistance = await userManager.FindByNameAsync(Dto.PhoneNumber);
+            if (CheckExistance != null)
+            {
+                ModelState.AddModelError(nameof(Dto.PhoneNumber), "شما قبلا ثبت نام کرده اید");
+                return View(Dto);
+            }
+            var model = Dto.ToEntity(mapper);
+            var UserCreated = new User()
+            {
+                UserName = model.Email,
+                Fname = model.Fname,
+                Lname = model.Lname,
+                Email = model.Email,
+                PhoneNumber = model.PhoneNumber
+            };
+            UserCreated.IsActive = true;
+            var result = await userManager.CreateAsync(UserCreated, Dto.PassWord);
+            if (result.Succeeded)
+            {
+                return RedirectToAction(nameof(TamrinLogin));
+            }
+            else
+            {
+                return View(Dto);
+            }
+           
+        }
+        public async Task<IActionResult> TamrinLogin()
+        {
+            return View();
+        }
+        [HttpPost]
+        public async Task<IActionResult> TamrinLogin(LoginDto Dto,string returnUrl=null)
+        {
+            returnUrl = returnUrl ?? Url.Content("~/");
+            var user = await userManager.FindByNameAsync(Dto.UserName);
+            if (user==null)
+            {
+                ModelState.AddModelError(Dto.UserName,"لطفا در ابتدا ثبت نام کنید.");
+                return RedirectToAction(nameof(Signup));
+            }
+            if (!user.IsActive)
+            {
+                ModelState.AddModelError(Dto.UserName, "اکانت شما غیرفعال شده است لطفا با پشتیبانی در تماس باشید");
+                return View(Dto);
+            }
+            var SignIn = await signInManager.PasswordSignInAsync(Dto.UserName, Dto.Password, true, lockoutOnFailure: false);
+            if (SignIn.Succeeded)
+            {
+                await signInManager.SignInAsync(user, true);
+                
+                var UserId = user.Id;
+                return RedirectToAction(nameof(Profile), new {Id=UserId});
+            }
+            else
+            {
+                ModelState.AddModelError(Dto.UserName, "رمزعبور یا نام کاربری اشتباه است");
+                return View(Dto);
+            }
+        }
+        public async Task<IActionResult> LogOut()
+        {
+         
+            await signInManager.SignOutAsync();
+            return RedirectToAction(nameof(TamrinLogin));
+        }
+        //single user
+        [HttpGet]
+        public async Task<IActionResult> Profile(Guid Id)
+        {
+
+            var SingleUser = await userManager.Users.ProjectTo<UserDto>(mapper.ConfigurationProvider).FirstOrDefaultAsync(x => x.IsActive && x.Id == Id);
+            return View(SingleUser);
+        }
+
+        public async Task<IActionResult> ChangePass(Guid Id)
+        {
+            TempData["Id"] = Id;
+            return View();
+        }
+        
+        [HttpPost]
+        public async Task<IActionResult> ChangePass(ChangePssDto Dto)
+        {
+            var user = await userManager.FindByIdAsync(Dto.UserId.ToString());
+            string Token = await userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await userManager.ResetPasswordAsync(user, Token, Dto.Pssword.ToString());
+            if (result.Succeeded)
+            {
+                ModelState.AddModelError(Dto.Pssword, "رمزعبور با موفقیت تغییر یافت");
+                return RedirectToAction(nameof(TamrinLogin));
+
+            }
+            ModelState.AddModelError(Dto.Pssword, " رمزعبور با موفقیت تغییر نیافت.مجدد امتحان کنید!");
+            return View();
+        }
+    }
+}
