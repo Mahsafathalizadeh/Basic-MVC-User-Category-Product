@@ -1,0 +1,70 @@
+using Admin.Models;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Admin.Controllers
+{
+    public class TamrinUserController : Controller
+    {
+    
+        public UserManager<User> userManager;
+        public IMapper mapper;
+        public RoleManager<Role> roleManager;
+
+        public TamrinUserController(UserManager<User> userManager, IMapper mapper, RoleManager<Role> roleManager)
+        {
+            this.userManager = userManager;
+            this.mapper = mapper;
+            this.roleManager = roleManager;
+        }
+        
+
+        [HttpGet]
+        public async Task<IActionResult> ListUser()
+        {
+            var ListUser = await userManager.Users.ProjectTo<UserDto>(mapper.ConfigurationProvider).Where(x=>x.IsActive).ToListAsync();
+            return View(ListUser);
+        }
+
+        
+
+        //ActiveDeactive
+        [HttpGet]
+        public async Task<IActionResult> ActiveDeactive(Guid Id)
+        {
+            var user = await userManager.Users.FirstOrDefaultAsync(x => x.Id == Id);
+            user.IsActive = false;
+            await userManager.UpdateAsync(user);
+            return RedirectToAction(nameof(ListUser));
+        }
+
+        //update
+        [HttpGet]
+        public async Task<IActionResult> UpdateUser(Guid Id)
+        {
+            var model = await userManager.Users.FirstOrDefaultAsync(x => x.Id == Id);
+            var user = mapper.Map<UserDto>(model);
+
+            return View(user);
+        }
+        [HttpPost]
+        public async Task<IActionResult> UpdateUser(UserDto Dto)
+        {
+            
+            var user = await userManager.FindByIdAsync(Dto.Id.ToString());
+            var model = Dto.ToEntity(mapper, user);
+            var result = await userManager.UpdateAsync(model);
+
+            return RedirectToAction(nameof(ListUser));
+        }
+        
+    }
+}
