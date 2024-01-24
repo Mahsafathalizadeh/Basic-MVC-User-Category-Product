@@ -1,0 +1,76 @@
+using Admin.Models;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Data.Repositories;
+using Entities;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using WebFramework.Api;
+
+namespace Admin.Controllers
+{
+    public class CategoryController : Controller
+    {
+        public readonly IMapper mapper;
+        public readonly IRepository<Category> catRepo;
+
+        public CategoryController(IMapper mapper, IRepository<Category> catRepo)
+        {
+            this.mapper = mapper;
+            this.catRepo = catRepo;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CreateCategory()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateCategory(CategoryDto Dto)
+        {
+            var model = Dto.ToEntity(mapper);
+            var CatModel = new Category()
+            {
+                Name = model.Name,
+            };
+            CatModel.Active = true;
+            catRepo.Add(CatModel);
+            
+            return RedirectToAction(nameof(ListCategory));
+        }
+
+        public async Task<IActionResult> ListCategory()
+        {
+            var ListCategory = await catRepo.TableNoTracking.ProjectTo<CategoryDto>(mapper.ConfigurationProvider).Where(x => x.Active).ToListAsync();
+            return View(ListCategory);
+        }
+        public async Task<IActionResult> ActiveDeactiveCategory(Guid Id)
+        {
+            var category = await catRepo.TableNoTracking.FirstOrDefaultAsync(x => x.Id == Id);
+            category.Active = false;
+            catRepo.Update(category);
+            return RedirectToAction(nameof(ListCategory));
+        }
+        [HttpGet]
+        public async Task<IActionResult> UpdateCategory(Guid Id)
+        {
+            var category = await catRepo.TableNoTracking.ProjectTo<CategoryDto>(mapper.ConfigurationProvider).FirstOrDefaultAsync(x => x.Id == Id);
+            return View(category);
+        }
+        [HttpPost]
+        public async Task<IActionResult> UpdateCategory(CategoryDto Dto)
+        {
+            var category = await catRepo.TableNoTracking.FirstOrDefaultAsync(x => x.Id == Dto.Id);
+            var catModel = Dto.ToEntity(mapper, category);
+            catModel.Active = true;
+            catRepo.Update(catModel);
+
+            return RedirectToAction(nameof(ListCategory));
+        }
+    }  
+}
