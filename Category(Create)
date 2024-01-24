@@ -1,0 +1,19 @@
+@using Admin.Models
+@model CategoryDto
+		<div class="row">
+			<div class="col-md-6">
+
+				<div class="card">
+					<div class="card-body">
+						<h6 class="card-title">نمای کلی</h6>
+						<form method="post" asp-action="CreateCategory" asp-controller="Category">
+							<div class="form-group">
+								<label for="exampleInputEmail1">نام دسته بندی مورد نظر را وارد کنید: </label>
+								<input asp-for="Name" type="text" class="form-control text-left" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="حبوبات" dir="ltr">
+							</div>
+							<button type="submit" class="btn btn-primary">ثبت</button>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>

@@ -1,0 +1,19 @@
+@using Admin.Models
+@model CategoryDto
+
+<div class="card-body">
+				<h6 class="card-title"> ویرایش دسته بندی</h6>
+				<form asp-for="UpdateCategory" asp-controller="Category" class="needs-validation" novalidate="">
+                    <input asp-for="Id" value="@Model.Id" hidden/>
+					<div class="form-row">
+						<div class="col-md-4 mb-3">
+							<label for="validationCustom01">نام</label>
+							<input asp-for=@Model.Name type="text" class="form-control" id="validationCustom01"  required="">
+							<div class="valid-feedback">
+								صحیح است!
+							</div>
+						</div>
+					</div>
+					<button class="btn btn-primary" type="submit">ثبت تغییرات </button>
+				</form>
+			</div>

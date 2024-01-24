@@ -1,0 +1,38 @@
+@using Admin.Models
+@model List<ProductDto>
+
+<div class="card-body">
+    <div class="table-responsive" tabindex="5" style="overflow: hidden; outline: none;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">نام  </th>
+                    <th scope="col">قیمت  </th>
+                    <th scope="col">تعداد  </th>
+                    <th scope="col">وضعیت</th>
+                </tr>
+            </thead>
+            @{
+                int j = 1;
+            }
+            @foreach (var item in Model)
+            {
+                <tbody>
+                    <tr>
+                        <th scope="row">@j</th>
+                        <td>@item.Name</td>
+                        <td>@item.Price</td>
+                        <td>@item.Count</td>
+                        <td>
+                            <a href="/Product/ActiveDeactiveProduct?Id=@item.Id" class="btn btn-danger btn-sm"> حذف</a>
+                            <a href="/Product/UpdateProduct?Id=@item.Id" class="btn btn-danger btn-sm"> ویرایش</a>
+                        </td>
+                    </tr>
+                </tbody>
+                j++;
+            }
+        </table>
+        <a href="/Product/CreateProduct" type="button" class="btn btn-warning">افزودن کالا</a>
+    </div>
+</div>
