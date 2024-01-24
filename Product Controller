@@ -1,0 +1,102 @@
+using Admin.Models;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Data.Repositories;
+using Entities;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Admin.Controllers
+{
+    public class ProductController : Controller
+    {
+        public readonly IMapper mapper;
+        public readonly IRepository<Product> productRepo;
+        public readonly IRepository<Category> catRepo;
+
+        public ProductController(IMapper mapper, IRepository<Product> productRepo, IRepository<Category> catRepo)
+        {
+            this.mapper = mapper;
+            this.productRepo = productRepo;
+            this.catRepo = catRepo;
+        }
+
+        public async Task<IActionResult> CreateProduct()
+        {
+            var ListCategory = await catRepo.TableNoTracking.Where(x => x.Active).ToListAsync();
+            var listcatDto = mapper.Map<List<CategoryDto>>(ListCategory);
+
+            var product = new ProductDto()
+            {
+                ListCategory = listcatDto,
+                    
+            };
+            TempData["CategoryId"] = product.CategoryId;
+
+            return View(product);
+        }
+        [HttpPost]
+        public async Task<IActionResult> CreateProduct(ProductDto Dto)
+        {
+            var categoryId = TempData["CategoryId"] as int?;
+            var model = Dto.ToEntity(mapper);
+            
+            var Product = new Product()
+            {
+                Name = model.Name,
+                Price = model.Price,
+                Count = model.Count,
+ 
+            };
+            
+            Product.Active = true;
+            productRepo.Add(Product);
+
+            return RedirectToAction(nameof(ListProduct));
+        }
+
+        public async Task<IActionResult> ListProduct()
+        {
+            var listProduct = await productRepo.TableNoTracking.ProjectTo<ProductDto>(mapper.ConfigurationProvider).Where(x => x.Active).ToListAsync();
+            return View(listProduct);
+        }
+
+        public async Task<IActionResult> ActiveDeactiveProduct(Guid Id)
+        {
+            var product = await productRepo.TableNoTracking.FirstOrDefaultAsync(x => x.Id == Id);
+            product.Active = false;
+            productRepo.Update(product);
+            return RedirectToAction(nameof(ListProduct));
+        }
+
+        public async Task<IActionResult> UpdateProduct(Guid Id)
+        {
+            var product = await productRepo.TableNoTracking.FirstOrDefaultAsync(x => x.Id == Id);
+            var ListCategory = await catRepo.TableNoTracking.Where(x => x.Active).ToListAsync();
+            var ListCatDto = mapper.Map<List<CategoryDto>>(ListCategory);
+
+            var productDto = new ProductDto()
+            {
+                Name = product.Name,
+                Price = product.Price,
+                Count = product.Count,
+                ListCategory = ListCatDto
+            };
+            return View(productDto);
+        }
+        [HttpPost]
+        public async Task<IActionResult> UpdateProduct(ProductDto Dto)
+        {
+            var product = await productRepo.TableNoTracking.FirstOrDefaultAsync(x => x.Id == Dto.Id);
+            var productfinal = Dto.ToEntity(mapper, product);
+            productfinal.Active = true;
+            productRepo.Update(productfinal);
+            return RedirectToAction(nameof(ListProduct));
+        }
+    }
+}
